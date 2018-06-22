@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=750,user-scalable=no"/>
+    <title>Title</title>
+    <link rel="stylesheet" href="photoPreview.css">
+</head>
+<body>
+<button class="show">显示</button>
+<div class="photo-preview">
+    <div class="photo-preview-bg"></div>
+    <div class="photo-preview-wrapper">
+        <div class="photo-preview-container">
+            <div class="photo-item">
+                <img src="images/m3.jpg">
+            </div>
+            <div class="photo-item">
+                <img src="images/sb1.jpg">
+            </div>
+            <div class="photo-item">
+                <img src="images/sb3.jpg">
+            </div>
+            <div class="photo-item">
+                <img src="images/sb4.jpg">
+            </div>
+            <div class="photo-item">
+                <img src="images/y1.jpeg">
+            </div>
+        </div>
+    </div>
+    <div style="position: relative;z-index: 100000">
+        <button class="photo-preview-prev">上一张</button>
+        <button class="photo-preview-next">下一张</button>
+        <button class="photo-preview-close">关闭</button>
+        <h1 class="photo-preview-num" style="color:#fff">0/0</h1>
+    </div>
+</div>
+<script>
+    ;(function (root, factory, plugName) {
+        if (typeof define === 'function' && define.amd) {
+            define([], factory);
+        } else if (typeof module === 'object' && module.exports) {
+            module.exports = factory();
+        } else {
+            root[plugName] = factory();
+        }
+    })(self, function () {
+        //合并函数
+        var __assign = Object.assign || function (t) {
+            for (var s, i = 1, n = arguments.length; i < n; i++) {
+                s = arguments[i];
+                for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+            }
+            return t;
+        };
+        // 参数
+        var __options = {
+            percent: 0.1,
+            id:1
+        }
+        // 工具函数
+        var __utils = {
+            $: function (selector) {
+                return document.querySelector(selector)
+            },
+            $All: function (selector) {
+                return document.querySelectorAll(selector)
+            }
+        }
+
+        // 内部存储对象
+        var touch = {
+            startPageX: 0,
+            isScroll: 0,
+            endPageX: 0,
+            figureScroll: 0,
+            page: 0
+        }
+
+        // 核心
+        function core(options) {
+            this.params = __assign(__options, options)
+            this.photoPreview = __utils.$('.photo-preview')
+            this.photoWrapper = __utils.$('.photo-preview-wrapper')
+            this.photoItem = __utils.$All('.photo-item')
+            this.photoTitleNum = __utils.$('.photo-preview-num')
+            this.prevElement = __utils.$('.photo-preview-prev')
+            this.nextElement = __utils.$('.photo-preview-next')
+            this.closeElement = __utils.$('.photo-preview-close')
+            this.show()
+            this.photoLen = this.photoItem.length
+            this.wrapperWidth = this.photoWrapper.clientWidth
+            this.touch = touch
+            this.init()
+        }
+
+        core.prototype = {
+            init: function () {
+                // 修改标题数据
+                this.changeTitle(1)
+                //初始化dom
+                Array.prototype.slice.call(this.photoItem).forEach(function (item, index) {
+                    item.style.transform = `translate3d(${this.wrapperWidth * index}px,0,0)`
+                }.bind(this))
+                this.photoWrapper.addEventListener('touchstart', this.touchStart.bind(this))
+                this.photoWrapper.addEventListener('touchmove', this.touchMove.bind(this))
+                this.photoWrapper.addEventListener('touchend', this.touchEnd.bind(this))
+                this.prevElement.addEventListener('click', this.prev.bind(this))
+                this.nextElement.addEventListener('click', this.next.bind(this))
+                this.closeElement.addEventListener('click', this.hide.bind(this))
+
+            },
+            touchStart: function (e) {
+                this.touch.startPageX = e.changedTouches[0].pageX
+            },
+            touchMove: function (e) {
+                this.touch.endPageX = e.changedTouches[0].pageX
+                var figureScroll = this.touch.endPageX - this.touch.startPageX
+                var nowScroll = figureScroll + this.touch.isScroll
+                this.touch.figureScroll = figureScroll
+                this.photoWrapper.style.transition = ''
+                this.photoWrapper.style.transform = `translate3d(${nowScroll}px,0,0)`
+            },
+            touchEnd: function () {
+                // 判断水平滑动方向 向左为1，向右为 -1
+                var flag = this.touch.figureScroll < 0 ? 1 : -1
+                var page = this.touch.page;
+
+                //处理切换条件
+
+                if (Math.abs(this.touch.figureScroll) > this.wrapperWidth * this.params.percent) {
+                    page += flag
+                }
+                // 设置 wrapper 位置以及加入过度效果
+                this.scrollTo(page)
+            },
+            scrollTo: function (page) {
+                //临界状态处理
+                if (page < 0) {
+                    page = 0
+                    this.touch.isScroll = 0
+                }
+
+                if (page > this.photoLen - 1) {
+                    page = this.photoLen - 1
+                    this.touch.isScroll = -this.wrapperWidth * page
+                }
+
+                // 设置 wrapper 位置以及加入过度效果
+                this.photoWrapper.style.transform = `translate3d(${(-page) * this.wrapperWidth}px,0,0)`
+                this.photoWrapper.style.transition = `transform 0.1s linear`
+
+                // 修改标题数据
+                this.changeTitle(page + 1)
+
+                // 存储信息
+                this.touch.page = page
+                this.touch.isScroll = (-page) * this.wrapperWidth
+            },
+            changeTitle: function (page) {
+                this.photoTitleNum.innerHTML = page + '/' + this.photoLen
+            },
+            prev: function () {
+                var page = this.touch.page - 1
+                this.scrollTo(page)
+            },
+            next: function () {
+                var page = this.touch.page + 1
+                this.scrollTo(page)
+            },
+            show: function () {
+                this.photoPreview.style.display = 'block'
+            },
+            hide: function () {
+                this.photoPreview.style.display = 'none'
+            }
+
+        }
+        return core
+
+    }, 'PhotoPreview');
+
+    document.querySelector('.show').addEventListener('click', function () {
+        new PhotoPreview()
+    })
+</script>
+</body>
+</html>
